@@ -1,0 +1,152 @@
+/*****************************************************************************************
+Copyright 2011 Rafael Muñoz Salinas. All rights reserved.
+
+Redistribution and use in source and binary forms, with or without modification, are
+permitted provided that the following conditions are met:
+
+   1. Redistributions of source code must retain the above copyright notice, this list of
+      conditions and the following disclaimer.
+
+   2. Redistributions in binary form must reproduce the above copyright notice, this list
+      of conditions and the following disclaimer in the documentation and/or other materials
+      provided with the distribution.
+
+THIS SOFTWARE IS PROVIDED BY Rafael Muñoz Salinas ''AS IS'' AND ANY EXPRESS OR IMPLIED
+WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND
+FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL Rafael Muñoz Salinas OR
+CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
+ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
+ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+The views and conclusions contained in the software and documentation are those of the
+authors and should not be interpreted as representing official policies, either expressed
+or implied, of Rafael Muñoz Salinas.
+********************************************************************************************/
+#include <string>
+#include <iostream>
+#include <fstream>
+#include <sstream>
+#include "aruco.h"
+#include "cvdrawingutils.h"
+#include <opencv2/highgui/highgui.hpp>
+#include <opencv2/imgproc/imgproc.hpp>
+using namespace cv;
+using namespace aruco;
+
+MarkerDetector MDetector;
+MarkerDetector MDetector2;
+VideoCapture TheVideoCapturer;
+VideoCapture TheVideoCapturer2;
+vector< Marker > TheMarkers;
+vector< Marker > TheMarkers2;
+Mat TheInputImage, TheInputImageCopy;
+Mat TheInputImage2, TheInputImageCopy2;
+CameraParameters TheCameraParameters;
+CameraParameters TheCameraParameters2;
+
+int main(int argc, char **argv) {
+        ///////////  PARSE ARGUMENTS
+        string TheInputVideo = "live";
+        //string TheInputVideo2 = "live";
+        // read camera parameters if passed
+        TheCameraParameters.readFromXMLFile("../out.yml");
+        float TheMarkerSize = 2;
+        //TheCameraParameters2.readFromXMLFile("../out.yml");
+        //float TheMarkerSize2 = 2;
+        ///////////  OPEN VIDEO
+        // read from camera or from  file
+        int vIdx = 0;
+        int vIdx2 = 1;
+        // check if the :idx is here
+        cout << "Opening camera index " << vIdx << endl;
+        //cout << "Opening camera index " << vIdx2<< endl;
+        TheVideoCapturer.open("/dev/video0");
+        //TheVideoCapturer2.open(vIdx2);
+        // check video is open
+        if (!TheVideoCapturer.isOpened()) {
+        	cout<<"Could not open video "<< vIdx << endl;
+        	throw std::runtime_error("Could not open video");
+        }
+        //if (!TheVideoCapturer2.isOpened()) {
+        //	cout<<"Could not open video "<< vIdx2 <<endl;
+        //	throw std::runtime_error("Could not open video");
+        //}
+        ///// CONFIGURE DATA
+        // read first image to get the dimensions
+        TheVideoCapturer >> TheInputImage;
+        //TheVideoCapturer2 >> TheInputImage2;
+        //Rect rect(0, 0, TheInputImage.cols/3, TheInputImage.rows/3);
+		//Mat true_img = TheInputImage(rect).clone();
+        //if (TheCameraParameters.isValid())
+        //    TheCameraParameters.resize(true_img.size());
+        //if (TheCameraParameters2.isValid())
+        //    TheCameraParameters2.resize(TheInputImage2.size());
+		TheVideoCapturer.set(CV_CAP_PROP_FRAME_WIDTH, 1920);
+		TheVideoCapturer.set(CV_CAP_PROP_FRAME_HEIGHT, 1080);
+		TheVideoCapturer.set(CV_CAP_PROP_FPS, 30);
+		//TheVideoCapturer2.set(CV_CAP_PROP_FRAME_WIDTH, 1920);
+		//TheVideoCapturer2.set(CV_CAP_PROP_FRAME_HEIGHT, 1080);
+        MDetector.setThresholdParams(7, 7);
+        MDetector.setThresholdParamRange(2, 0);
+        //MDetector2.setThresholdParams(7, 7);
+        //MDetector2.setThresholdParamRange(2, 0);
+		char key = 0;
+		cv::namedWindow("in1");
+		//cv::namedWindow("in2");
+        do {
+            TheVideoCapturer.retrieve(TheInputImage);
+            //TheVideoCapturer2.retrieve(TheInputImage2);
+            //Rect rect(0, 0, TheInputImage.cols/3, TheInputImage.rows/3);
+			//Mat true_img = TheInputImage(rect).clone();
+            // Detection of markers in the image passed
+            TheMarkers= MDetector.detect(TheInputImage, TheCameraParameters, TheMarkerSize);
+	    	double position[3];
+	    	double orientation[4];
+            // print marker info
+            for (unsigned int i = 0; i < TheMarkers.size(); i++) {
+            	TheMarkers[i].draw(TheInputImage, Scalar(0, 0, 255));
+				//TheMarkers[i].OgreGetPoseParameters(position,orientation);
+				//cout << "ID = "<<TheMarkers[i].id<<" Txyz : ";
+				//for(unsigned int j = 0; j < 3; j++){
+		    	//	cout << position[j] << " ";
+				//}
+				//cout<<" Rwxyz : ";
+            	//for(unsigned int j = 0; j < 4; j++){
+		    	//	cout << orientation[j] << " ";
+				//}
+				//cout << endl;
+            }
+            if (TheCameraParameters.isValid() && TheMarkerSize>0)
+                for (unsigned int i = 0; i < TheMarkers.size(); i++) {
+                    CvDrawingUtils::draw3dCube(TheInputImage, TheMarkers[i], TheCameraParameters);
+                    CvDrawingUtils::draw3dAxis(TheInputImage, TheMarkers[i], TheCameraParameters);
+                }
+            //TheMarkers= MDetector2.detect(TheInputImage2, TheCameraParameters2, TheMarkerSize2);
+            //for (unsigned int i = 0; i < TheMarkers.size(); i++) {
+            //	TheMarkers[i].draw(TheInputImage2, Scalar(0, 0, 255));
+				//TheMarkers[i].OgreGetPoseParameters(position,orientation);
+				//cout << "ID2 = "<<TheMarkers[i].id<<" Txyz : ";
+				//for(unsigned int j = 0; j < 3; j++){
+		    	//	cout << position[j] << " ";
+				//}
+				//cout<<" Rwxyz : ";
+            	//for(unsigned int j = 0; j < 4; j++){
+		    	//	cout << orientation[j] << " ";
+				//}
+				//cout << endl;
+           // }
+            //if (TheCameraParameters.isValid() && TheMarkerSize>0)
+            //    for (unsigned int i = 0; i < TheMarkers.size(); i++) {
+            //        CvDrawingUtils::draw3dCube(TheInputImage2, TheMarkers[i], TheCameraParameters2);
+            //        CvDrawingUtils::draw3dAxis(TheInputImage2, TheMarkers[i], TheCameraParameters2);
+            //    }
+            cv::imshow("in1", TheInputImage);
+            //cv::imshow("in2", TheInputImage2);
+            key = cv::waitKey(20); // wait for key to be pressed
+            
+        } while (TheVideoCapturer.grab() /*&& TheVideoCapturer2.grab()*/ && key!=27);
+}
+	
